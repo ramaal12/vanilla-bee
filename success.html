@@ -1,0 +1,13 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تأكيد الطلب | Vanilla Bee</title><link rel="stylesheet" href="style.css"></head><body>
+<header class="top"><a class="logo" href="index.html" style="text-decoration:none">Vanilla Bee</a></header>
+<main><div class="card" id="box" style="max-width:560px;margin:30px auto"></div></main>
+<script>
+const p=new URLSearchParams(location.search),st=p.get("status"),o=JSON.parse(localStorage.getItem("vb_last_order")||"null"),b=document.getElementById("box");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+if(st==="paid"&&o){localStorage.removeItem("vb_cart");
+b.innerHTML=`<h2>تم استلام طلبك 💗🍵</h2>${p.get("test")?'<div class="notice">طلب تجريبي (بدون دفع فعلي)</div>':''}<p>رقم الطلب: <b>${o.id}</b><br>رقم العملية: ${esc(p.get("id")||"")}</p>
+<p>${o.mode==="delivery"?"🚗 توصيل إلى: "+esc(o.customer.district+" - "+o.customer.address):"🏪 استلام من: "+esc(o.customer.branch+" ("+o.customer.time+")")}</p>
+${o.items.map(l=>`<div class="ci"><b style="direction:ltr">${esc(l.name)}</b> × ${l.qty}<small>${l.opts.map(esc).join(" · ")}</small></div>`).join("")}
+<p><b>الإجمالي: ${o.total} ر.س</b></p><a class="btn" href="index.html">رجوع للمتجر</a>`}
+else b.innerHTML=`<h2>لم تكتمل عملية الدفع</h2><p>${esc(p.get("message")||"حاول مرة ثانية.")}</p><a class="btn" href="index.html">رجوع</a>`;
+</script></body></html>
