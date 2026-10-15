@@ -29,7 +29,7 @@ window.VB_MENU = {
     { id:"icev60", img:"assets/m-icev60.jpg", cat:"coffee", type:"simple", name:"ICE V60", price:18, emoji:"🧊", desc:"قهوة مقطرة باردة" },
     { id:"hotv60", img:"assets/m-hotv60.jpg", cat:"coffee", type:"simple", name:"V60 HOT", price:14, emoji:"☕", desc:"قهوة مقطرة حارة" },
     { id:"brownie", img:"assets/m-brownie.jpg", cat:"sweets", type:"sweet", name:"BROWNIE BITES", price:14, emoji:"🍫", desc:"قطع براونيز غنية بالشوكولاتة" },
-    { id:"matilda", img:"assets/m-matilda.jpg?v=202610152248", cat:"sweets", type:"sweet", name:"MATILDA CAKE", price:22, emoji:"🎂", desc:"كيكة ماتيلدا بالشوكولاتة" }
+    { id:"matilda", img:"assets/m-matilda.jpg?v=202610152248", cat:"sweets", type:"sweet", name:"MATILDA CAKE", price:22, emoji:"🎂", desc:"طبقات شوكولاتة غنية، تكفي شخصين أو ثلاثة، وطعمها موزون بدون حلاوة زايدة" }
   ],
   milks: ["حليب الشوفان (Oat)","فانيلا برو (Vanilla Pro)","فانيلا عادي (Regular Vanilla)","حليب جوز الهند (Coconut)","حليب المانجو (Mango)","حليب الفراولة (Strawberry)","خالي اللاكتوز (Lactose-free)"],
   addons: [
