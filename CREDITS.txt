@@ -1,6 +1,5 @@
 Hero: user-supplied photo.
 Product/gallery photos from Wikimedia Commons (licenses CC0 / Public domain / CC BY / CC BY-SA):
-m-classic: Matcha_tea_latte_with_rosetta_latte_art.jpg (CC BY-SA 4.0)
 m-coconut: Matcha_latte_in_tall_glass.jpg (CC BY-SA 4.0)
 m-veloura: Fresh-mango-smoothie_01.jpg (CC BY-SA 4.0)
 m-icev60: Ice_coffee_image.jpg (CC BY-SA 3.0)
