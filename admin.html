@@ -1,7 +1,7 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>لوحة الطلبات | Vanilla Bee</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;800&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=202610152013"><link rel="stylesheet" href="admin.css?v=202610152013"></head><body>
+<link rel="stylesheet" href="style.css?v=202610152021"><link rel="stylesheet" href="admin.css?v=202610152021"></head><body>
 <header class="top"><div class="logo">Vanilla Bee <small style="color:#7fa36b">| الإدارة</small></div><div id="who"></div></header>
 <main>
 <section id="loginBox" class="card" style="max-width:420px;margin:40px auto">
@@ -22,6 +22,8 @@
   <div class="stat"><span>💵 كاش</span><b id="sCash">0</b></div>
   <div class="stat"><span>توصيل / استلام</span><b id="sSplit">0 / 0</b></div>
   <div class="stat"><span>قيد التنفيذ</span><b id="sOpen">0</b></div>
+  <div class="stat"><span>⭐ تقييم اليوم</span><b id="sRateDay">—</b></div>
+  <div class="stat"><span>⭐ متوسط التقييم (الكل)</span><b id="sRateAll">—</b></div>
  </div>
  <div class="filters">
   <label>التاريخ<input type="date" id="fDate"></label>
@@ -34,7 +36,7 @@
 </section>
 </main>
 <div class="overlay" id="detail"><div class="sheet" id="detailSheet"></div></div>
-<script src="config.js?v=202610152013"></script>
+<script src="config.js?v=202610152021"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="admin.js?v=202610152013"></script>
+<script src="admin.js?v=202610152021"></script>
 </body></html>

@@ -43,3 +43,11 @@ footer{text-align:center;padding:30px;color:#888}.bee{display:inline-block;anima
 .paytoggle button{border:0;background:transparent;border-radius:12px;padding:12px 6px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
 .paytoggle button.on{background:var(--matcha);color:#fff}
 [hidden]{display:none!important}
+.track{list-style:none;display:flex;gap:4px;padding:0;margin:14px 0;counter-reset:s}
+.track li{flex:1;text-align:center;font-size:.72rem;color:#aaa;position:relative;padding-top:4px}
+.track li span{display:flex;align-items:center;justify-content:center;width:36px;height:36px;margin:0 auto 4px;border-radius:50%;background:#eee;font-size:1.05rem;filter:grayscale(1);opacity:.6}
+.track li.done span{background:var(--matcha2);filter:none;opacity:1}.track li.done{color:var(--matcha)}
+.track li.cur span{background:var(--pink);filter:none;opacity:1;box-shadow:0 0 0 4px #f6c9d366;animation:pulse 1.6s infinite}.track li.cur{color:var(--ink);font-weight:700}
+@keyframes pulse{50%{box-shadow:0 0 0 8px #f6c9d322}}
+.rate{margin:12px 0;gap:8px}.starsel{display:flex;gap:6px;direction:ltr;justify-content:center}
+.starsel button{font-size:2.1rem;background:none;border:0;color:#ddd;cursor:pointer;padding:0 2px}.starsel button.on{color:#e0a030}

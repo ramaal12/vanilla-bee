@@ -15,3 +15,4 @@ input[type=password],input[type=date]{width:100%;padding:10px;border:1px solid #
 @media(min-width:800px){.stats{grid-template-columns:repeat(3,1fr)}}
 .decide{display:flex;gap:8px;margin-top:10px}.decide .big{flex:1;padding:12px;font-size:1.05rem;font-weight:700}.decide .rej{background:#c95b6e}
 .ord.s-pending_approval{border-color:#e0a030;background:#fffaf0}
+.stars{color:#e0a030;letter-spacing:1px}

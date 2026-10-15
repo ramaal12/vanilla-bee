@@ -19,11 +19,12 @@ export async function handler(req: Request): Promise<Response> {
   const id = String(b.order_id ?? ""), token = String(b.token ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f]{32,64}$/.test(token)) return json({ error: "bad input" }, 400);
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(`${env("SUPABASE_URL")}/rest/v1/orders?id=eq.${id}&select=access_token,status,payment_status,reject_reason`,
+  const r = await fetch(`${env("SUPABASE_URL")}/rest/v1/orders?id=eq.${id}&select=access_token,status,type,payment_status,reject_reason,rated_at,rating`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   const o = (await r.json())?.[0];
   if (!o || !o.access_token || !safeEqual(o.access_token, token)) return json({ error: "not found" }, 404);
-  return json({ status: o.status, payment_status: o.payment_status,
+  return json({ status: o.status, type: o.type, payment_status: o.payment_status,
+    rated: !!o.rated_at, rating: o.rating,
     reject_reason: o.status === "cancelled" ? o.reject_reason : null });
 }
 if (import.meta.main) Deno.serve(handler);

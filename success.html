@@ -1,7 +1,7 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تأكيد الطلب | Vanilla Bee</title><link rel="stylesheet" href="style.css?v=202610152013"></head><body>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تأكيد الطلب | Vanilla Bee</title><link rel="stylesheet" href="style.css?v=202610152021"></head><body>
 <header class="top"><a class="logo" href="index.html" style="text-decoration:none">Vanilla Bee</a></header>
 <main><div class="card" id="box" style="max-width:560px;margin:30px auto"><p>جاري التحقق من الدفع...</p></div></main>
-<script src="config.js?v=202610152013"></script>
+<script src="config.js?v=202610152021"></script>
 <script>
 (async()=>{
 const C=window.VB_CONFIG,p=new URLSearchParams(location.search),st=p.get("status"),pid=p.get("id")||"",b=document.getElementById("box");
@@ -25,19 +25,42 @@ b.innerHTML=`<h2 id="okTitle">تم استلام طلبك 💗🍵</h2>${p.get("t
 <p>${o.mode==="delivery"?"🚗 توصيل إلى: "+esc(o.customer.district+" - "+o.customer.address):"🏪 استلام من: "+esc(o.customer.branch+" ("+o.customer.time+")")}</p>
 ${o.items.map(l=>`<div class="ci"><b style="direction:ltr">${esc(l.name)}</b> × ${l.qty}<small>${l.opts.map(esc).join(" · ")}</small></div>`).join("")}
 <p><b>الإجمالي: ${esc(o.total)} ر.س</b></p><div id="orderState"></div><a class="btn" href="index.html">رجوع للمتجر</a>`;
-if(hasDB&&o.uuid&&o.token&&(verified||cash))poll();
+if(hasDB&&o.uuid&&o.token&&(verified||cash))setTimeout(poll);
+async function call(fn,body){const r=await fetch(C.SUPABASE_URL+"/functions/v1/"+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY},body:JSON.stringify(body)});return {status:r.status,j:await r.json().catch(()=>({}))}}
+function stages(type){return type==="delivery"
+ ?[["pending_approval","بانتظار الموافقة","⏳"],["preparing","قيد التحضير","👩‍🍳"],["ready","جاهز","✅"],["out_for_delivery","مع المندوب","🛵"],["done","تم التسليم","📦"]]
+ :[["pending_approval","بانتظار الموافقة","⏳"],["preparing","قيد التحضير","👩‍🍳"],["ready","جاهز للاستلام","✅"],["done","تم التسليم","📦"]]}
+function tracker(st,type){const S=stages(type),k=Math.max(0,S.findIndex(x=>x[0]===(st==="new"?"pending_approval":st)));
+ return `<ol class="track" id="track" data-s="${st}">${S.map((x,i)=>`<li class="${i<k?"done":i===k?"cur":""}"><span>${x[2]}</span>${x[1]}</li>`).join("")}</ol>`}
+const MSG={pending_approval:"⏳ <b>بانتظار الموافقة</b><br><small>بنأكد طلبك خلال دقائق، خلك على هذي الصفحة.</small>",
+ preparing:"✅ <b>تم قبول طلبك</b> وجاري تحضيره 💗",ready:null,out_for_delivery:"🛵 <b>طلبك مع المندوب</b> وفي الطريق لك",done:"📦 <b>تم تسليم طلبك</b>، بالعافية 💗"};
 async function poll(){
- const box=document.getElementById("orderState");let n=0;
- const show=(cls,html)=>box.innerHTML=`<div class="notice state-${cls}" id="state" data-s="${cls}">${html}</div>`;
- show("pending","⏳ <b>بانتظار الموافقة</b><br><small>بنأكد طلبك خلال دقائق، خلك على هذي الصفحة.</small>");
- const tick=async()=>{n++;
-  try{const r=await fetch(C.SUPABASE_URL+"/functions/v1/order-status",{method:"POST",headers:{"Content-Type":"application/json",apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY},body:JSON.stringify({order_id:o.uuid,token:o.token})});
-   if(r.ok){const j=await r.json();
-    if(j.status==="cancelled")return show("rejected",`😔 <b>نعتذر، تم رفض الطلب</b>${j.reject_reason?`<br>السبب: ${esc(j.reject_reason)}`:""}${o.method!=="cash"?"<br><small>سيتم استرجاع المبلغ لبطاقتك.</small>":""}`);
-    if(j.status&&j.status!=="pending_approval")return show("accepted","✅ <b>تم قبول طلبك</b> وجاري تحضيره 💗");}
-  }catch(e){}
-  setTimeout(tick,n<60?5000:15000)};
+ const box=document.getElementById("orderState");let n=0,last="";
+ const show=(st,type,j)=>{if(st+String(j&&j.rated)===last)return;last=st+String(j&&j.rated);
+  if(st==="cancelled"){box.innerHTML=`<div class="notice state-rejected" id="state" data-s="rejected">😔 <b>نعتذر، تم رفض الطلب</b>${j.reject_reason?`<br>السبب: ${esc(j.reject_reason)}`:""}${o.method!=="cash"?"<br><small>سيتم استرجاع المبلغ لبطاقتك.</small>":""}</div>`;return}
+  const msg=st==="ready"?(type==="delivery"?"✅ <b>طلبك جاهز</b> وبانتظار المندوب":"🛍️ <b>طلبك جاهز للاستلام!</b> تقدر تمر الفرع الحين"):(MSG[st]||MSG.pending_approval);
+  const cls=st==="pending_approval"||st==="new"?"pending":"accepted";
+  box.innerHTML=tracker(st,type)+`<div class="notice state-${cls}" id="state" data-s="${cls==="pending"?"pending":st==="preparing"?"accepted":st}">${msg}</div>`+(st==="done"?rateBox(j):"")};
+ const type=o.mode==="pickup"?"pickup":"delivery";
+ show("pending_approval",type,null);
+ const tick=async()=>{n++;let st=null;
+  try{const {status,j}=await call("order-status",{order_id:o.uuid,token:o.token});if(status===200){st=j.status;show(st,j.type||type,j)}}catch(e){}
+  if(st==="cancelled"||st==="done")return;
+  setTimeout(tick,n<120?5000:20000)};
  tick();
 }
+function rateBox(j){
+ if(j&&j.rated)return `<div class="notice state-accepted" id="rated">شكراً لتقييمك ${"★".repeat(j.rating||0)} 💗</div>`;
+ return `<div class="card rate" id="rateBox"><b>كيف كانت تجربتك؟</b><div class="starsel" role="radiogroup">${[1,2,3,4,5].map(v=>`<button type="button" data-r="${v}" aria-label="${v}">★</button>`).join("")}</div>
+  <textarea id="rateComment" rows="2" maxlength="500" placeholder="تعليق (اختياري)"></textarea><div class="err" id="rateErr"></div><button class="btn g" id="rateBtn" disabled>إرسال التقييم</button></div>`}
+let chosen=0;
+document.addEventListener("click",async e=>{const t=e.target;
+ if(t.dataset&&t.dataset.r){chosen=+t.dataset.r;document.querySelectorAll(".starsel button").forEach(b=>b.classList.toggle("on",+b.dataset.r<=chosen));document.getElementById("rateBtn").disabled=false}
+ if(t.id==="rateBtn"){if(!chosen)return;t.disabled=true;t.textContent="جاري الإرسال...";
+  try{const {status}=await call("rate-order",{order_id:o.uuid,token:o.token,rating:chosen,comment:document.getElementById("rateComment").value});
+   if(status===200||status===409)document.getElementById("rateBox").outerHTML=`<div class="notice state-accepted" id="rated">شكراً لتقييمك ${"★".repeat(chosen)} 💗</div>`;
+   else{document.getElementById("rateErr").textContent="تعذّر الإرسال، حاول مرة ثانية";t.disabled=false;t.textContent="إرسال التقييم"}}
+  catch(err){document.getElementById("rateErr").textContent="تعذّر الإرسال، حاول مرة ثانية";t.disabled=false;t.textContent="إرسال التقييم"}}
+});
 })();
 </script></body></html>

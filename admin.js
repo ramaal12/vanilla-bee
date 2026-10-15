@@ -40,8 +40,10 @@ async function load(){
  const from=new Date(day+"T00:00:00+03:00").toISOString(),to=new Date(day+"T23:59:59.999+03:00").toISOString();
  const {data,error}=await sb.from("orders").select("*").gte("created_at",from).lte("created_at",to).order("created_at",{ascending:false});
  if(error){$("#list").innerHTML=`<div class="notice">خطأ في التحميل: ${esc(error.message)}</div>`;return}
- orders=new Map(data.map(o=>[o.id,o]));render();
+ orders=new Map(data.map(o=>[o.id,o]));render();loadRating();
 }
+async function loadRating(){const {data}=await sb.from("rating_summary").select("*").maybeSingle();
+ $("#sRateAll").textContent=data&&data.ratings?`${Number(data.avg_rating).toFixed(1)} ★ (${data.ratings})`:"—"}
 function subscribe(){
  if(channel)sb.removeChannel(channel);
  channel=sb.channel("orders-live").on("postgres_changes",{event:"*",schema:"public",table:"orders"},onChange)
@@ -52,7 +54,7 @@ function onChange(ev){
  const prev=orders.get(o.id)||ev.old;
  const becamePaid=isDone(o)&&!(prev&&isDone(prev));
  if(riyadhDay(o.created_at)===$("#fDate").value)orders.set(o.id,o);
- render(becamePaid?o.id:null);
+ render(becamePaid?o.id:null);if(o.rated_at&&!(prev&&prev.rated_at))loadRating();
  if(becamePaid)alertNew(o);
 }
 window.__vbOnChange=onChange;
@@ -67,12 +69,13 @@ function render(flashId){
  $("#sCash").textContent=sar(sum(cashL))+(cashL.some(o=>o.payment_status==="cash_pending")?` (لم يُحصّل ${sar(sum(cashL.filter(o=>o.payment_status==="cash_pending")))})`:"");
  $("#sSplit").textContent=paid.filter(o=>o.type==="delivery").length+" / "+paid.filter(o=>o.type==="pickup").length;
  $("#sOpen").textContent=paid.filter(o=>OPEN.includes(o.status)).length;
+ const rated=all.filter(o=>o.rated_at);$("#sRateDay").textContent=rated.length?(rated.reduce((a,o)=>a+o.rating,0)/rated.length).toFixed(1)+" ★ ("+rated.length+")":"—";
  const list=all.filter(o=>(!st||o.status===st)&&(!pay||isDone(o)));
  $("#list").innerHTML=list.length?list.map(o=>`<div class="ord s-${o.status}${o.id===flashId?" flash":""}" data-id="${o.id}">
   <div class="row"><b>${esc(o.order_no)}</b><span>${fmtTime(o.created_at)}</span></div>
   <div class="row"><span>${esc(o.customer_name)} · ${o.type==="delivery"?"🚗 توصيل":"🏪 استلام"}</span><b>${sar(o.total)}</b></div>
   <div><span class="badge">${STATUS[o.status]}</span><span class="badge pay-${o.payment_status}">${isCash(o)?"💵 ":""}${PAY[o.payment_status]}</span>
-  <small style="color:#777"> ${o.items.map(l=>esc(l.name)+" ×"+l.qty).join("، ")}</small></div>${decisionBtns(o)}${refundNote(o)}</div>`).join(""):`<div class="empty">لا توجد طلبات</div>`;
+  <small style="color:#777"> ${o.items.map(l=>esc(l.name)+" ×"+l.qty).join("، ")}</small>${o.rated_at?` <span class="stars">${stars(o.rating)}</span>`:""}</div>${decisionBtns(o)}${refundNote(o)}</div>`).join(""):`<div class="empty">لا توجد طلبات</div>`;
  const open=$("#detail").dataset.id;if(open&&$("#detail").classList.contains("open"))showDetail(open);
 }
 function showDetail(id){
@@ -90,7 +93,8 @@ function showDetail(id){
   <button class="btn ${o.payment_status==="cash_pending"?"g":"ghost"}" id="cashToggle" data-to="${o.payment_status==="cash_pending"?"cash_collected":"cash_pending"}">${o.payment_status==="cash_pending"?"💵 تم استلام الكاش":"↩︎ إلغاء التحصيل"}</button>`:""}
  ${o.moyasar_payment_id?`<small dir="ltr">Payment: ${esc(o.moyasar_payment_id)}</small>`:""}
  <label>ملاحظات داخلية<textarea id="notes" rows="2" maxlength="500">${esc(o.notes||"")}</textarea></label><button class="btn ghost" id="saveNotes">حفظ الملاحظة</button>
- <div class="stbtns">${Object.entries(STATUS).filter(([k])=>k!=="pending_approval"&&k!=="new"&&(o.type==="delivery"||k!=="out_for_delivery")).map(([k,v])=>`<button class="btn ${k==="cancelled"?"":"g"} ${o.status===k?"cur":""}" data-st="${k}">${v}</button>`).join("")}</div>
+ ${OPEN.includes(o.status)&&o.status!=="pending_approval"&&o.status!=="new"?`<div class="stbtns">${o.status!=="out_for_delivery"?`<button class="btn" data-st="cancelled">❌ إلغاء</button>`:""}</div>`:""}
+ ${o.rated_at?`<div class="notice">⭐ تقييم العميل: ${stars(o.rating)} (${o.rating}/5)${o.rating_comment?`<br>💬 ${esc(o.rating_comment)}`:""}</div>`:""}
  <div class="err" id="dErr"></div>`;
  $("#detail").classList.add("open");
 }
@@ -99,9 +103,13 @@ async function update(id,patch){
  if(error){const d=$("#dErr");if(d)d.textContent="تعذّر الحفظ: "+error.message;else alert("تعذّر الحفظ: "+error.message);return}
  orders.set(id,data);render();
 }
-function decisionBtns(o){return o.status==="pending_approval"&&isDone(o)?`<div class="decide"><button class="btn g big" data-acc="${o.id}">✅ قبول</button><button class="btn big rej" data-rej="${o.id}">❌ رفض</button></div>`:""}
+const NEXT=o=>({preparing:["ready","✅ تم التحضير"],ready:o.type==="delivery"?["out_for_delivery","🛵 المندوب استلم الطلب"]:["done","📦 تم التسليم"],out_for_delivery:["done","📦 تم التسليم"]})[o.status];
+const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
+function nextBtn(o){const n=NEXT(o);return n&&isDone(o)?`<div class="decide"><button class="btn g big" data-next="${n[0]}" data-oid="${o.id}">${n[1]}</button></div>`:""}
+function decisionBtns(o){return o.status!=="pending_approval"&&o.status!=="new"?nextBtn(o):(o.status==="pending_approval"||o.status==="new")&&isDone(o)?`<div class="decide"><button class="btn g big" data-acc="${o.id}">✅ قبول</button><button class="btn big rej" data-rej="${o.id}">❌ رفض</button></div>`:""}
 function refundNote(o){return o.status==="cancelled"&&o.payment_status==="paid"?`<div class="notice">⚠️ الطلب مدفوع إلكترونياً: يلزم استرداد المبلغ يدوياً من لوحة Moyasar${o.moyasar_payment_id?` (${esc(o.moyasar_payment_id)})`:""}</div>`:""}
 async function decide(e){const t=e.target;
+ if(t.dataset.next){e.stopPropagation();await update(t.dataset.oid,{status:t.dataset.next});return true}
  if(t.dataset.acc){e.stopPropagation();await update(t.dataset.acc,{status:"preparing"});return true}
  if(t.dataset.rej){e.stopPropagation();const reason=prompt("سبب الرفض (اختياري):","");if(reason===null)return true;
   await update(t.dataset.rej,{status:"cancelled",reject_reason:reason.trim().slice(0,300)||null});return true}
