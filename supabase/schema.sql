@@ -158,3 +158,5 @@ end $$;
 drop trigger if exists orders_stamp_decision on public.orders;
 create trigger orders_stamp_decision before update on public.orders
   for each row execute function public.stamp_decision();
+-- ============ 004: رمز الطلب تلقائي (يحمي من نسخ JS قديمة في كاش المتصفح) ============
+alter table public.orders alter column access_token set default encode(extensions.gen_random_bytes(24), 'hex');

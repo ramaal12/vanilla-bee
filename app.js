@@ -39,7 +39,15 @@ function openItem(it){
 function open(s){$(s).classList.add("open")}function close(s){$(s).classList.remove("open")}
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)close("#"+o.id)}));
 function toast(t){const d=document.createElement("div");d.textContent=t;d.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#7fa36b;color:#fff;padding:10px 20px;border-radius:99px;z-index:99";document.body.appendChild(d);setTimeout(()=>d.remove(),1800)}
-let mode="delivery",payMethod="online";
+const CO_KEY="vb_checkout";const co=JSON.parse(localStorage.getItem(CO_KEY)||"{}");
+let mode=co.mode==="pickup"?"pickup":"delivery",payMethod=co.payMethod==="cash"?"cash":"online";
+function saveCo(){const f=$("#coForm");if(f)new FormData(f).forEach((v,k)=>co[k]=v);co.mode=mode;co.payMethod=payMethod;localStorage.setItem(CO_KEY,JSON.stringify(co))}
+function restoreCo(){const f=$("#coForm");if(!f)return;[...f.elements].forEach(el=>{if(el.name&&co[el.name]!=null&&co[el.name]!=="")el.value=co[el.name]})}
+function payUI(){const cash=payMethod==="cash";
+ document.querySelectorAll(".paytoggle button").forEach(b=>{b.classList.toggle("on",b.dataset.pm===payMethod);b.setAttribute("aria-pressed",b.dataset.pm===payMethod)});
+ const n=$("#testNotice");if(n)n.hidden=cash||!isTest();
+ const pb=$("#payBtn");if(pb&&!busy)pb.textContent=cash?"تأكيد الطلب":"متابعة للدفع";
+ const b=$("#payBadges");if(b)b.hidden=cash;const c=$("#cashNote");if(c)c.hidden=!cash}
 const subtotal=()=>cart.reduce((a,l)=>a+l.unit*l.qty,0);const total=()=>subtotal()+(mode==="delivery"?C.deliveryFee:0);
 function renderCart(){
  const sh=$("#cartSheet");
@@ -57,18 +65,22 @@ function renderCart(){
  </form>
  <div class="row"><span>المجموع</span><span>${sar(subtotal())}</span></div>${mode==="delivery"?`<div class="row"><span>التوصيل</span><span>${sar(C.deliveryFee)}</span></div>`:""}
  <div class="row"><b>الإجمالي</b><b id="total">${sar(total())}</b></div>
- <fieldset><legend>طريقة الدفع</legend><label class="opt"><input type="radio" name="paym" value="online" ${payMethod==="online"?"checked":""}> 💳 دفع إلكتروني</label>
- <div class="paybadges"><span> Apple Pay</span><span>mada</span><span>Visa</span><span>Mastercard</span></div>
- <label class="opt"><input type="radio" name="paym" value="cash" ${payMethod==="cash"?"checked":""}> 💵 كاش عند ${mode==="delivery"?"التوصيل":"الاستلام"}</label></fieldset>
- ${payMethod==="online"&&isTest()?`<div class="notice" id="testNotice">⚠️ وضع تجريبي: لم يتم إضافة مفتاح Moyasar بعد، لذلك الدفع غير مفعّل. أضف المفتاح في config.js.</div>`:""}
- <button class="btn g" id="payBtn" style="width:100%">${payMethod==="cash"?"تأكيد الطلب":"متابعة للدفع"}</button><div class="mysr-form" id="payForm"></div>`;
+ <div class="paylabel">طريقة الدفع</div>
+ <div class="paytoggle" role="group"><button type="button" data-pm="online">💳 دفع إلكتروني</button><button type="button" data-pm="cash">💵 كاش عند ${mode==="delivery"?"التوصيل":"الاستلام"}</button></div>
+ <div class="paybadges" id="payBadges"><span> Apple Pay</span><span>mada</span><span>Visa</span><span>Mastercard</span></div>
+ <div class="notice" id="cashNote" hidden>تدفع المبلغ كاش عند ${mode==="delivery"?"التوصيل":"الاستلام"}.</div>
+ ${isTest()?`<div class="notice" id="testNotice">⚠️ وضع تجريبي: لم يتم إضافة مفتاح Moyasar بعد، لذلك الدفع غير مفعّل. أضف المفتاح في config.js.</div>`:""}
+ <button class="btn g" id="payBtn" style="width:100%">متابعة للدفع</button><div class="mysr-form" id="payForm"></div>`;
+ restoreCo();payUI();
 }
 $("#cartSheet").onclick=e=>{const t=e.target;
  if(t.hasAttribute("data-close"))close("#cartModal");
- if(t.dataset.d!==undefined){const l=cart[+t.dataset.d];l.qty+= +t.dataset.v;if(l.qty<1)cart.splice(+t.dataset.d,1);save();renderCart()}
- if(t.id==="geo"&&navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.querySelector('[name=map]').value=`https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}`});
+ if(t.dataset.pm){payMethod=t.dataset.pm;saveCo();payUI();$("#payForm").innerHTML="";$("#payBtn").style.display="";return}
+ if(t.dataset.d!==undefined){saveCo();const l=cart[+t.dataset.d];l.qty+= +t.dataset.v;if(l.qty<1)cart.splice(+t.dataset.d,1);save();renderCart()}
+ if(t.id==="geo"&&navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.querySelector('[name=map]').value=`https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}`;saveCo()});
  if(t.id==="payBtn")checkout()};
-$("#cartSheet").onchange=e=>{if(e.target.name==="mode"){mode=e.target.value;renderCart()}if(e.target.name==="paym"){payMethod=e.target.value;renderCart()}};
+$("#cartSheet").onchange=e=>{if(e.target.name==="mode"){saveCo();mode=e.target.value;saveCo();renderCart()}else saveCo()};
+$("#cartSheet").addEventListener("input",e=>{if(e.target.closest("#coForm"))saveCo()});
 $("#openCart").onclick=()=>{renderCart();open("#cartModal")};
 function validate(){
  const f=$("#coForm"),d=Object.fromEntries(new FormData(f));let ok=true;f.parentNode.querySelectorAll(".err[data-e]").forEach(e=>e.textContent="");
@@ -81,7 +93,7 @@ const hasDB=()=>/^https:\/\//.test(C.SUPABASE_URL||"")&&!/^PUT_/.test(C.SUPABASE
 const uuid=()=>crypto.randomUUID?crypto.randomUUID():"10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
 async function saveOrder(row){
  const r=await fetch(C.SUPABASE_URL+"/rest/v1/orders",{method:"POST",headers:{apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(row)});
- if(!r.ok)throw new Error("save "+r.status+" "+await r.text());
+ if(!r.ok){const body=await r.text();console.error("[VanillaBee] Supabase insert failed",r.status,body);throw new Error("save "+r.status+" "+body)}
 }
 let busy=false;
 async function checkout(){
@@ -100,7 +112,7 @@ async function checkout(){
    branch:mode==="pickup"?d.branch:null,pickup_time:mode==="pickup"?d.time:null,
    items:cart.map(l=>({id:l.id,name:l.name,qty:l.qty,unit:l.unit,opts:l.opts})),subtotal:order.subtotal,delivery_fee:order.delivery,total:order.total,
    payment_method:cash?"cash":"online",payment_status:cash?"cash_pending":"pending",access_token:tok})}
-  catch(e){console.error(e);busy=false;btn.disabled=false;btn.textContent=cash?"تأكيد الطلب":"متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
+  catch(e){console.error("[VanillaBee] order save error:",e&&e.message||e);busy=false;btn.disabled=false;btn.textContent=cash?"تأكيد الطلب":"متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
   busy=false;
  }
  localStorage.setItem("vb_last_order",JSON.stringify(order));

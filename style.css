@@ -38,3 +38,8 @@ footer{text-align:center;padding:30px;color:#888}.bee{display:inline-block;anima
 @media(min-width:860px){.hero{min-height:92vh;background-position:center 25%}.herotxt h1{font-size:4.5rem!important}}
 .strip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px}.strip img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px}
 .state-accepted{background:#dfead2;border-color:#7fa36b}.state-rejected{background:#f8d0d0;border-color:#d98b8b}
+.paylabel{font-weight:700;margin:12px 0 6px}
+.paytoggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#fff;border:1px solid var(--pink);border-radius:16px;padding:4px}
+.paytoggle button{border:0;background:transparent;border-radius:12px;padding:12px 6px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
+.paytoggle button.on{background:var(--matcha);color:#fff}
+[hidden]{display:none!important}
