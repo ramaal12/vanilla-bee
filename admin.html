@@ -1,0 +1,38 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>لوحة الطلبات | Vanilla Bee</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;800&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="admin.css"></head><body>
+<header class="top"><div class="logo">Vanilla Bee <small style="color:#7fa36b">| الإدارة</small></div><div id="who"></div></header>
+<main>
+<section id="loginBox" class="card" style="max-width:420px;margin:40px auto">
+ <h2>تسجيل الدخول</h2>
+ <form id="loginForm" novalidate>
+  <label>البريد الإلكتروني<input type="text" name="email" autocomplete="username" dir="ltr"></label>
+  <label>كلمة المرور<input type="password" name="password" autocomplete="current-password" dir="ltr"></label>
+  <div class="err" id="loginErr"></div>
+  <button class="btn g" style="width:100%">دخول</button>
+ </form>
+ <div class="notice" id="cfgNotice" hidden>لم يتم إعداد Supabase بعد. أضف SUPABASE_URL و SUPABASE_ANON_KEY في config.js.</div>
+</section>
+<section id="dash" hidden>
+ <div class="stats">
+  <div class="stat"><span>طلبات اليوم المدفوعة</span><b id="sCount">0</b></div>
+  <div class="stat"><span>إجمالي المبيعات</span><b id="sTotal">0</b></div>
+  <div class="stat"><span>توصيل / استلام</span><b id="sSplit">0 / 0</b></div>
+  <div class="stat"><span>قيد التنفيذ</span><b id="sOpen">0</b></div>
+ </div>
+ <div class="filters">
+  <label>التاريخ<input type="date" id="fDate"></label>
+  <label>الحالة<select id="fStatus"><option value="">الكل</option></select></label>
+  <label>الدفع<select id="fPay"><option value="done">مدفوع فقط</option><option value="">الكل (مع غير المدفوع)</option></select></label>
+  <span id="live" class="live">● مباشر</span>
+  <button class="btn ghost" id="enableAlerts" type="button">🔔 تفعيل التنبيهات</button>
+ </div>
+ <div id="list"></div>
+</section>
+</main>
+<div class="overlay" id="detail"><div class="sheet" id="detailSheet"></div></div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="admin.js"></script>
+</body></html>

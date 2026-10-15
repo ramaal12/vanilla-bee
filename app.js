@@ -75,18 +75,37 @@ function validate(){
  if(!/^(05\d{8}|\+?9665\d{8})$/.test((d.phone||"").replace(/\s/g,"")))err("phone","رقم جوال سعودي غير صحيح");
  if(mode==="delivery"){if(!d.district||!d.district.trim())err("district","اكتب الحي");if(!d.address||d.address.trim().length<5)err("address","اكتب العنوان بالتفصيل")}
  return ok?d:null}
-function checkout(){
- const d=validate();if(!d)return;
- const order={id:"VB"+Date.now().toString().slice(-8),mode,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:new Date().toISOString()};
+const hasDB=()=>/^https:\/\//.test(C.SUPABASE_URL||"")&&!/^PUT_/.test(C.SUPABASE_ANON_KEY||"");
+const uuid=()=>crypto.randomUUID?crypto.randomUUID():"10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
+async function saveOrder(row){
+ const r=await fetch(C.SUPABASE_URL+"/rest/v1/orders",{method:"POST",headers:{apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(row)});
+ if(!r.ok)throw new Error("save "+r.status+" "+await r.text());
+}
+let busy=false;
+async function checkout(){
+ if(busy)return;const d=validate();if(!d)return;
+ const n=new Date(),p2=x=>String(x).padStart(2,"0");
+ const orderNo="VB"+p2(n.getMonth()+1)+p2(n.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
+ const order={uuid:uuid(),id:orderNo,mode,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:n.toISOString()};
+ const btn=$("#payBtn");
+ if(hasDB()){
+  busy=true;btn.disabled=true;btn.textContent="جاري حفظ الطلب...";
+  try{await saveOrder({id:order.uuid,order_no:orderNo,customer_name:d.name.trim(),phone:d.phone.replace(/\s/g,""),type:mode,
+   district:mode==="delivery"?d.district.trim():null,address:mode==="delivery"?d.address.trim():null,map_link:mode==="delivery"&&d.map?d.map.trim():null,
+   branch:mode==="pickup"?d.branch:null,pickup_time:mode==="pickup"?d.time:null,
+   items:cart.map(l=>({id:l.id,name:l.name,qty:l.qty,unit:l.unit,opts:l.opts})),subtotal:order.subtotal,delivery_fee:order.delivery,total:order.total})}
+  catch(e){console.error(e);busy=false;btn.disabled=false;btn.textContent="متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
+  busy=false;
+ }
  localStorage.setItem("vb_last_order",JSON.stringify(order));
- $("#payBtn").style.display="none";
+ btn.style.display="none";
  if(isTest()){$("#payForm").innerHTML=`<div class="notice">وضع تجريبي: تم تجهيز الطلب ${order.id} بدون دفع فعلي.</div><a class="btn g" id="testFinish" href="${C.callbackPath}?test=1&status=paid&id=TEST">إتمام (تجريبي)</a>`;return}
  Moyasar.init({element:"#payForm",amount:Math.round(order.total*100),currency:"SAR",
   description:`Vanilla Bee order ${order.id}`,publishable_api_key:C.moyasarPublishableKey,
   callback_url:new URL(C.callbackPath,location.href).href,methods:["creditcard","applepay"],
   supported_networks:["mada","visa","mastercard"],
   apple_pay:{country:"SA",label:C.storeName,validate_merchant_url:"https://api.moyasar.com/v1/applepay/initiate"},
-  metadata:{order_id:order.id,phone:d.phone,mode}});
+  metadata:{order_id:order.uuid||order.id,order_no:order.id,phone:d.phone,mode}});
 }
 renderMenu();save();
 })();
