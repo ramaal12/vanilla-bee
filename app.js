@@ -7,30 +7,42 @@ const isTest=()=>!/^pk_(test|live)_/.test(C.moyasarPublishableKey||"");
 function save(){localStorage.setItem(KEY,JSON.stringify(cart));$("#cartCount").textContent=cart.reduce((a,l)=>a+l.qty,0)}
 function renderMenu(){
  $("#tabs").innerHTML=M.categories.map(c=>`<button data-c="${c.id}" class="${c.id===curCat?'on':''}">${esc(c.name)}</button>`).join("");
- $("#grid").innerHTML=M.items.filter(i=>i.cat===curCat).map(i=>`<div class="card"><img class="pimg" src="${i.img||"assets/hero.jpg"}" alt="${esc(i.name)}" loading="lazy"><h3>${esc(i.name)}</h3><p>${esc(i.desc)}</p><div class="row"><span class="price">${sar(i.price)}</span><button class="btn add" data-id="${i.id}">أضف</button></div></div>`).join("");
+ $("#grid").innerHTML=M.items.filter(i=>i.cat===curCat).map(i=>`<div class="card"><img class="pimg" src="${i.img||"assets/hero.jpg"}" alt="${esc(i.name)}" loading="lazy"><h3>${esc(i.name)}${i.nameAr?`<small class="ar">${esc(i.nameAr)}</small>`:""}</h3><p>${esc(i.desc)}</p><div class="row"><span class="price">${i.sizes?"من "+sar(Math.min(...i.sizes.map(z=>z.price))):sar(i.price)}</span><button class="btn add" data-id="${i.id}">أضف</button></div></div>`).join("");
 }
 $("#tabs").onclick=e=>{if(e.target.dataset.c){curCat=e.target.dataset.c;renderMenu()}};
 $("#grid").onclick=e=>{const id=e.target.dataset.id;if(id)openItem(M.items.find(i=>i.id===id))};
 function radios(name,arr,checkFirst){return arr.map((v,k)=>`<label class="opt"><input type="radio" name="${name}" value="${esc(v)}" ${checkFirst&&k===0?'checked':''}> ${esc(v)}</label>`).join("")}
+function itemOpts(it){const drink=it.type==="drink";return{
+ drink,sizes:it.sizes||null,milks:drink?(it.milks||M.milks):null,
+ addons:drink?(it.addons||M.addons):[],sweet:drink&&it.sweetness!==false,ice:drink&&it.ice!==false}}
 function openItem(it){
- const drink=it.type==="drink";
- $("#itemSheet").innerHTML=`<div class="row"><h3 style="direction:ltr">${esc(it.name)}</h3><button class="btn ghost" data-close>✕</button></div><p>${esc(it.desc)}</p>
- ${drink?`<fieldset id="milkSet"><legend>نوع الحليب <span class="req">* إجباري</span></legend>${radios("milk",M.milks,false)}<div class="err" id="milkErr"></div></fieldset>
- <fieldset><legend>إضافات (اختياري)</legend>${M.addons.map(a=>`<label class="opt"><input type="checkbox" name="addon" value="${a.id}"> ${esc(a.name)} (+${sar(a.price)})</label>`).join("")}</fieldset>
- <fieldset><legend>مستوى الحلا (اختياري)</legend>${radios("sweet",M.sweetness,true)}</fieldset>
- <fieldset><legend>كمية الثلج (اختياري)</legend>${radios("ice",M.ice,true)}</fieldset>`:""}
+ const O=itemOpts(it),needSize=!!O.sizes,needMilk=!!O.milks;
+ $("#itemSheet").innerHTML=`<div class="row"><h3 style="direction:ltr">${esc(it.name)}${it.nameAr?` <small style="direction:rtl">${esc(it.nameAr)}</small>`:""}</h3><button class="btn ghost" data-close>✕</button></div><p>${esc(it.desc)}</p>
+ ${needSize?`<fieldset id="sizeSet"><legend>الحجم <span class="req">* إجباري</span></legend>${O.sizes.map((z,k)=>`<label class="opt"><input type="radio" name="size" value="${k}"> ${esc(z.name)} (${sar(z.price)})</label>`).join("")}</fieldset>`:""}
+ ${needMilk?`<fieldset id="milkSet"><legend>نوع الحليب <span class="req">* إجباري</span></legend>${radios("milk",O.milks,false)}<div class="err" id="milkErr"></div></fieldset>`:""}
+ ${O.addons.length?`<fieldset><legend>إضافات (اختياري)</legend>${O.addons.map(a=>`<label class="opt"><input type="checkbox" name="addon" value="${a.id}"> ${esc(a.name)} (+${sar(a.price)})</label>`).join("")}</fieldset>`:""}
+ ${O.sweet?`<fieldset><legend>مستوى الحلا (اختياري)</legend>${radios("sweet",M.sweetness,true)}</fieldset>`:""}
+ ${O.ice?`<fieldset><legend>كمية الثلج (اختياري)</legend>${radios("ice",M.ice,true)}</fieldset>`:""}
  <label>ملاحظات (اختياري)<textarea id="note" rows="2" maxlength="200"></textarea></label>
+ <div class="err" id="optErr"></div>
  <div class="row"><div class="qty"><button data-q="-1">−</button> <b id="q">1</b> <button data-q="1">+</button></div>
- <button class="btn g" id="addBtn" ${drink?'disabled':''}>أضف للسلة — <span id="lp"></span></button></div>`;
+ <button class="btn g" id="addBtn">أضف للسلة — <span id="lp"></span></button></div>`;
  let q=1;const sh=$("#itemSheet");
- const unit=()=>it.price+[...sh.querySelectorAll('[name=addon]:checked')].reduce((a,c)=>a+M.addons.find(x=>x.id===c.value).price,0);
- const upd=()=>{$("#q").textContent=q;$("#lp").textContent=sar(unit()*q);if(drink)$("#addBtn").disabled=!sh.querySelector('[name=milk]:checked')};
+ const sizeIdx=()=>{const z=sh.querySelector('[name=size]:checked');return z?+z.value:-1};
+ const base=()=>needSize?(sizeIdx()>=0?O.sizes[sizeIdx()].price:O.sizes[0].price):it.price;
+ const unit=()=>base()+[...sh.querySelectorAll('[name=addon]:checked')].reduce((a,c)=>a+O.addons.find(x=>x.id===c.value).price,0);
+ const ready=()=>(!needSize||sizeIdx()>=0)&&(!needMilk||!!sh.querySelector('[name=milk]:checked'));
+ const upd=()=>{$("#q").textContent=q;$("#lp").textContent=sar(unit()*q);$("#addBtn").disabled=!ready()};
  sh.onchange=upd;
  sh.onclick=e=>{if(e.target.dataset.q){q=Math.max(1,q+ +e.target.dataset.q);upd()}if(e.target.hasAttribute("data-close"))close("#itemModal")};
  $("#addBtn").onclick=()=>{
-  const opts=[];if(drink){const m=sh.querySelector('[name=milk]:checked');if(!m){$("#milkErr").textContent="لازم تختار نوع الحليب";return}
-   opts.push("الحليب: "+m.value);sh.querySelectorAll('[name=addon]:checked').forEach(c=>opts.push(M.addons.find(x=>x.id===c.value).name));
-   const s=sh.querySelector('[name=sweet]:checked').value,i=sh.querySelector('[name=ice]:checked').value;if(s!=="عادي")opts.push("الحلا: "+s);if(i!=="عادي")opts.push("الثلج: "+i)}
+  if(!ready()){$("#optErr").textContent=needSize&&sizeIdx()<0?"لازم تختار الحجم":"لازم تختار نوع الحليب";return}
+  const opts=[];
+  if(needSize)opts.push("الحجم: "+O.sizes[sizeIdx()].name);
+  if(needMilk)opts.push("الحليب: "+sh.querySelector('[name=milk]:checked').value);
+  sh.querySelectorAll('[name=addon]:checked').forEach(c=>opts.push(O.addons.find(x=>x.id===c.value).name));
+  if(O.sweet){const s=sh.querySelector('[name=sweet]:checked').value;if(s!=="عادي")opts.push("الحلا: "+s)}
+  if(O.ice){const i=sh.querySelector('[name=ice]:checked').value;if(i!=="عادي")opts.push("الثلج: "+i)}
   const n=$("#note").value.trim();if(n)opts.push("ملاحظة: "+n);
   const key=it.id+"|"+opts.join("|");const ex=cart.find(l=>l.key===key);
   if(ex)ex.qty+=q;else cart.push({key,id:it.id,name:it.name,opts,unit:unit(),qty:q});save();close("#itemModal");toast("انضاف للسلة ✓")};

@@ -51,3 +51,4 @@ footer{text-align:center;padding:30px;color:#888}.bee{display:inline-block;anima
 @keyframes pulse{50%{box-shadow:0 0 0 8px #f6c9d322}}
 .rate{margin:12px 0;gap:8px}.starsel{display:flex;gap:6px;direction:ltr;justify-content:center}
 .starsel button{font-size:2.1rem;background:none;border:0;color:#ddd;cursor:pointer;padding:0 2px}.starsel button.on{color:#e0a030}
+.card h3 small.ar{display:block;font-size:.82rem;color:#8a857c;direction:rtl;font-weight:400}
