@@ -1,10 +1,7 @@
 Hero: user-supplied photo.
-Product/gallery photos from Wikimedia Commons (licenses CC0 / Public domain / CC BY / CC BY-SA):
+Product photos from Wikimedia Commons (licenses CC0 / Public domain / CC BY / CC BY-SA):
 m-icev60: Ice_coffee_image.jpg (CC BY-SA 3.0)
 m-hotv60: Manual_drip_(pour-over)_coffee.jpg (CC0)
 m-brownie: Brownie-dessert-cake-sweet-45202.jpg (CC0)
-gallery1: Chasen-top-ar-1to1_PNr°0496.jpg (CC BY-SA 4.0)
-gallery2: Matcha-powder-2356768_1280.jpg (CC0)
-gallery3: Matcha_Latte_with_Seasalt_Cream.jpg (CC BY 4.0)
 Source pages: https://commons.wikimedia.org/wiki/File:<name>
 Replace with your own product photos when available (same filenames in assets/).
