@@ -13,3 +13,5 @@ input[type=password],input[type=date]{width:100%;padding:10px;border:1px solid #
 [hidden]{display:none!important}
 .badge.pay-cash_pending{background:#ffe2b8}.badge.pay-cash_collected{background:var(--matcha2)}
 @media(min-width:800px){.stats{grid-template-columns:repeat(3,1fr)}}
+.decide{display:flex;gap:8px;margin-top:10px}.decide .big{flex:1;padding:12px;font-size:1.05rem;font-weight:700}.decide .rej{background:#c95b6e}
+.ord.s-pending_approval{border-color:#e0a030;background:#fffaf0}

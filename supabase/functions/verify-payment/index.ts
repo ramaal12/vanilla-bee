@@ -54,10 +54,15 @@ async function sendTelegram(o: any) {
   if (!token || !chat) return false;
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chat, text: telegramText(o), parse_mode: "HTML", disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chat, text: telegramText(o), parse_mode: "HTML", disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[
+        { text: "✅ قبول", callback_data: `acc:${o.id}` },
+        { text: "❌ رفض", callback_data: `rej:${o.id}` }]] } }),
   });
-  if (!r.ok) console.error("telegram", r.status, await r.text());
-  return r.ok;
+  if (!r.ok) { console.error("telegram", r.status, await r.text()); return false; }
+  const msgId = (await r.json())?.result?.message_id;
+  if (msgId) await db(`orders?id=eq.${o.id}`, { method: "PATCH", body: JSON.stringify({ telegram_message_id: msgId }) });
+  return true;
 }
 
 async function markNotified(id: string) {

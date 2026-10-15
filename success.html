@@ -24,6 +24,20 @@ b.innerHTML=`<h2 id="okTitle">تم استلام طلبك 💗🍵</h2>${p.get("t
 <p>رقم الطلب: <b>${esc(o.id)}</b>${verified?' <span style="color:#7fa36b">✓ مؤكد</span>':''}<br>${cash?`💵 الدفع: كاش عند ${o.mode==="delivery"?"التوصيل":"الاستلام"} (${esc(o.total)} ر.س)`:"رقم العملية: "+esc(pid)}</p>
 <p>${o.mode==="delivery"?"🚗 توصيل إلى: "+esc(o.customer.district+" - "+o.customer.address):"🏪 استلام من: "+esc(o.customer.branch+" ("+o.customer.time+")")}</p>
 ${o.items.map(l=>`<div class="ci"><b style="direction:ltr">${esc(l.name)}</b> × ${l.qty}<small>${l.opts.map(esc).join(" · ")}</small></div>`).join("")}
-<p><b>الإجمالي: ${esc(o.total)} ر.س</b></p><a class="btn" href="index.html">رجوع للمتجر</a>`;
+<p><b>الإجمالي: ${esc(o.total)} ر.س</b></p><div id="orderState"></div><a class="btn" href="index.html">رجوع للمتجر</a>`;
+if(hasDB&&o.uuid&&o.token&&(verified||cash))poll();
+async function poll(){
+ const box=document.getElementById("orderState");let n=0;
+ const show=(cls,html)=>box.innerHTML=`<div class="notice state-${cls}" id="state" data-s="${cls}">${html}</div>`;
+ show("pending","⏳ <b>بانتظار الموافقة</b><br><small>بنأكد طلبك خلال دقائق، خلك على هذي الصفحة.</small>");
+ const tick=async()=>{n++;
+  try{const r=await fetch(C.SUPABASE_URL+"/functions/v1/order-status",{method:"POST",headers:{"Content-Type":"application/json",apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY},body:JSON.stringify({order_id:o.uuid,token:o.token})});
+   if(r.ok){const j=await r.json();
+    if(j.status==="cancelled")return show("rejected",`😔 <b>نعتذر، تم رفض الطلب</b>${j.reject_reason?`<br>السبب: ${esc(j.reject_reason)}`:""}${o.method!=="cash"?"<br><small>سيتم استرجاع المبلغ لبطاقتك.</small>":""}`);
+    if(j.status&&j.status!=="pending_approval")return show("accepted","✅ <b>تم قبول طلبك</b> وجاري تحضيره 💗");}
+  }catch(e){}
+  setTimeout(tick,n<60?5000:15000)};
+ tick();
+}
 })();
 </script></body></html>

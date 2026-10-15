@@ -1,9 +1,9 @@
 (function(){
 const C=window.VB_CONFIG,$=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const STATUS={new:"جديد",preparing:"قيد التحضير",ready:"جاهز",out_for_delivery:"خرج للتوصيل",done:"مكتمل",cancelled:"ملغي"};
+const STATUS={pending_approval:"بانتظار الموافقة",new:"جديد",preparing:"قيد التحضير",ready:"جاهز",out_for_delivery:"خرج للتوصيل",done:"مكتمل",cancelled:"ملغي"};
 const PAY={pending:"بانتظار الدفع",paid:"مدفوع",test:"تجريبي",failed:"فشل الدفع",cash_pending:"كاش - لم يُحصّل",cash_collected:"كاش - تم التحصيل"};
-const OPEN=["new","preparing","ready","out_for_delivery"];
+const OPEN=["pending_approval","new","preparing","ready","out_for_delivery"];
 const sar=n=>Number(n||0).toFixed(2)+" ر.س";
 const tz="Asia/Riyadh";
 const fmtTime=d=>new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory",{timeZone:tz,hour:"2-digit",minute:"2-digit"}).format(new Date(d));
@@ -72,13 +72,14 @@ function render(flashId){
   <div class="row"><b>${esc(o.order_no)}</b><span>${fmtTime(o.created_at)}</span></div>
   <div class="row"><span>${esc(o.customer_name)} · ${o.type==="delivery"?"🚗 توصيل":"🏪 استلام"}</span><b>${sar(o.total)}</b></div>
   <div><span class="badge">${STATUS[o.status]}</span><span class="badge pay-${o.payment_status}">${isCash(o)?"💵 ":""}${PAY[o.payment_status]}</span>
-  <small style="color:#777"> ${o.items.map(l=>esc(l.name)+" ×"+l.qty).join("، ")}</small></div></div>`).join(""):`<div class="empty">لا توجد طلبات</div>`;
+  <small style="color:#777"> ${o.items.map(l=>esc(l.name)+" ×"+l.qty).join("، ")}</small></div>${decisionBtns(o)}${refundNote(o)}</div>`).join(""):`<div class="empty">لا توجد طلبات</div>`;
  const open=$("#detail").dataset.id;if(open&&$("#detail").classList.contains("open"))showDetail(open);
 }
 function showDetail(id){
  const o=orders.get(id);if(!o)return;$("#detail").dataset.id=id;
  $("#detailSheet").innerHTML=`<div class="row"><h3>طلب ${esc(o.order_no)}</h3><button class="btn ghost" data-close>✕</button></div>
  <p><span class="badge">${STATUS[o.status]}</span><span class="badge pay-${o.payment_status}">${PAY[o.payment_status]}</span></p>
+ ${decisionBtns(o)}${refundNote(o)}${o.status==="cancelled"&&o.reject_reason?`<p>سبب الرفض: ${esc(o.reject_reason)}</p>`:""}
  <p>👤 ${esc(o.customer_name)}<br>📞 <a href="tel:${esc(o.phone)}" dir="ltr">${esc(o.phone)}</a> · <a href="https://wa.me/966${esc(String(o.phone).replace(/^\+?966|^0/,""))}" target="_blank">واتساب</a><br>
  🕒 ${fmtTime(o.created_at)}</p>
  <p>${o.type==="delivery"?`🚗 توصيل: ${esc(o.district)} - ${esc(o.address)}${o.map_link?`<br>🗺 <a href="${esc(o.map_link)}" target="_blank" rel="noopener">فتح الموقع</a>`:""}`:`🏪 استلام: ${esc(o.branch)} (${esc(o.pickup_time)})`}</p>
@@ -89,17 +90,24 @@ function showDetail(id){
   <button class="btn ${o.payment_status==="cash_pending"?"g":"ghost"}" id="cashToggle" data-to="${o.payment_status==="cash_pending"?"cash_collected":"cash_pending"}">${o.payment_status==="cash_pending"?"💵 تم استلام الكاش":"↩︎ إلغاء التحصيل"}</button>`:""}
  ${o.moyasar_payment_id?`<small dir="ltr">Payment: ${esc(o.moyasar_payment_id)}</small>`:""}
  <label>ملاحظات داخلية<textarea id="notes" rows="2" maxlength="500">${esc(o.notes||"")}</textarea></label><button class="btn ghost" id="saveNotes">حفظ الملاحظة</button>
- <div class="stbtns">${Object.entries(STATUS).filter(([k])=>o.type==="delivery"||k!=="out_for_delivery").map(([k,v])=>`<button class="btn ${k==="cancelled"?"":"g"} ${o.status===k?"cur":""}" data-st="${k}">${v}</button>`).join("")}</div>
+ <div class="stbtns">${Object.entries(STATUS).filter(([k])=>k!=="pending_approval"&&k!=="new"&&(o.type==="delivery"||k!=="out_for_delivery")).map(([k,v])=>`<button class="btn ${k==="cancelled"?"":"g"} ${o.status===k?"cur":""}" data-st="${k}">${v}</button>`).join("")}</div>
  <div class="err" id="dErr"></div>`;
  $("#detail").classList.add("open");
 }
 async function update(id,patch){
  const {data,error}=await sb.from("orders").update(patch).eq("id",id).select().single();
- if(error){$("#dErr").textContent="تعذّر الحفظ: "+error.message;return}
+ if(error){const d=$("#dErr");if(d)d.textContent="تعذّر الحفظ: "+error.message;else alert("تعذّر الحفظ: "+error.message);return}
  orders.set(id,data);render();
 }
-$("#list").onclick=e=>{const c=e.target.closest(".ord");if(c)showDetail(c.dataset.id)};
-$("#detailSheet").onclick=e=>{const t=e.target;
+function decisionBtns(o){return o.status==="pending_approval"&&isDone(o)?`<div class="decide"><button class="btn g big" data-acc="${o.id}">✅ قبول</button><button class="btn big rej" data-rej="${o.id}">❌ رفض</button></div>`:""}
+function refundNote(o){return o.status==="cancelled"&&o.payment_status==="paid"?`<div class="notice">⚠️ الطلب مدفوع إلكترونياً: يلزم استرداد المبلغ يدوياً من لوحة Moyasar${o.moyasar_payment_id?` (${esc(o.moyasar_payment_id)})`:""}</div>`:""}
+async function decide(e){const t=e.target;
+ if(t.dataset.acc){e.stopPropagation();await update(t.dataset.acc,{status:"preparing"});return true}
+ if(t.dataset.rej){e.stopPropagation();const reason=prompt("سبب الرفض (اختياري):","");if(reason===null)return true;
+  await update(t.dataset.rej,{status:"cancelled",reject_reason:reason.trim().slice(0,300)||null});return true}
+ return false}
+$("#list").onclick=async e=>{if(await decide(e))return;const c=e.target.closest(".ord");if(c)showDetail(c.dataset.id)};
+$("#detailSheet").onclick=async e=>{const t=e.target;if(await decide(e))return;
  if(t.hasAttribute("data-close"))$("#detail").classList.remove("open");
  if(t.dataset.st){if(t.dataset.st==="cancelled"&&!confirm("إلغاء الطلب؟"))return;update($("#detail").dataset.id,{status:t.dataset.st})}
  if(t.id==="cashToggle")update($("#detail").dataset.id,{payment_status:t.dataset.to});

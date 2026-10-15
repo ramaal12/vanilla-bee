@@ -90,7 +90,8 @@ async function checkout(){
  const orderNo="VB"+p2(n.getMonth()+1)+p2(n.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
  const cash=payMethod==="cash";
  if(cash&&!hasDB()){$("#payForm").innerHTML='<div class="notice">الدفع كاش غير متاح حالياً.</div>';return}
- const order={uuid:uuid(),id:orderNo,mode,method:payMethod,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:n.toISOString()};
+ const tok=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,"0")).join("");
+ const order={uuid:uuid(),token:tok,id:orderNo,mode,method:payMethod,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:n.toISOString()};
  const btn=$("#payBtn");
  if(hasDB()){
   busy=true;btn.disabled=true;btn.textContent="جاري حفظ الطلب...";
@@ -98,7 +99,7 @@ async function checkout(){
    district:mode==="delivery"?d.district.trim():null,address:mode==="delivery"?d.address.trim():null,map_link:mode==="delivery"&&d.map?d.map.trim():null,
    branch:mode==="pickup"?d.branch:null,pickup_time:mode==="pickup"?d.time:null,
    items:cart.map(l=>({id:l.id,name:l.name,qty:l.qty,unit:l.unit,opts:l.opts})),subtotal:order.subtotal,delivery_fee:order.delivery,total:order.total,
-   payment_method:cash?"cash":"online",payment_status:cash?"cash_pending":"pending"})}
+   payment_method:cash?"cash":"online",payment_status:cash?"cash_pending":"pending",access_token:tok})}
   catch(e){console.error(e);busy=false;btn.disabled=false;btn.textContent=cash?"تأكيد الطلب":"متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
   busy=false;
  }

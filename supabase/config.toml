@@ -1,2 +1,8 @@
 [functions.verify-payment]
 verify_jwt = false
+
+[functions.order-status]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
