@@ -39,7 +39,7 @@ function openItem(it){
 function open(s){$(s).classList.add("open")}function close(s){$(s).classList.remove("open")}
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)close("#"+o.id)}));
 function toast(t){const d=document.createElement("div");d.textContent=t;d.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#7fa36b;color:#fff;padding:10px 20px;border-radius:99px;z-index:99";document.body.appendChild(d);setTimeout(()=>d.remove(),1800)}
-let mode="delivery";
+let mode="delivery",payMethod="online";
 const subtotal=()=>cart.reduce((a,l)=>a+l.unit*l.qty,0);const total=()=>subtotal()+(mode==="delivery"?C.deliveryFee:0);
 function renderCart(){
  const sh=$("#cartSheet");
@@ -57,16 +57,18 @@ function renderCart(){
  </form>
  <div class="row"><span>المجموع</span><span>${sar(subtotal())}</span></div>${mode==="delivery"?`<div class="row"><span>التوصيل</span><span>${sar(C.deliveryFee)}</span></div>`:""}
  <div class="row"><b>الإجمالي</b><b id="total">${sar(total())}</b></div>
+ <fieldset><legend>طريقة الدفع</legend><label class="opt"><input type="radio" name="paym" value="online" ${payMethod==="online"?"checked":""}> 💳 دفع إلكتروني</label>
  <div class="paybadges"><span> Apple Pay</span><span>mada</span><span>Visa</span><span>Mastercard</span></div>
- ${isTest()?`<div class="notice" id="testNotice">⚠️ وضع تجريبي: لم يتم إضافة مفتاح Moyasar بعد، لذلك الدفع غير مفعّل. أضف المفتاح في config.js.</div>`:""}
- <button class="btn g" id="payBtn" style="width:100%">متابعة للدفع</button><div class="mysr-form" id="payForm"></div>`;
+ <label class="opt"><input type="radio" name="paym" value="cash" ${payMethod==="cash"?"checked":""}> 💵 كاش عند ${mode==="delivery"?"التوصيل":"الاستلام"}</label></fieldset>
+ ${payMethod==="online"&&isTest()?`<div class="notice" id="testNotice">⚠️ وضع تجريبي: لم يتم إضافة مفتاح Moyasar بعد، لذلك الدفع غير مفعّل. أضف المفتاح في config.js.</div>`:""}
+ <button class="btn g" id="payBtn" style="width:100%">${payMethod==="cash"?"تأكيد الطلب":"متابعة للدفع"}</button><div class="mysr-form" id="payForm"></div>`;
 }
 $("#cartSheet").onclick=e=>{const t=e.target;
  if(t.hasAttribute("data-close"))close("#cartModal");
  if(t.dataset.d!==undefined){const l=cart[+t.dataset.d];l.qty+= +t.dataset.v;if(l.qty<1)cart.splice(+t.dataset.d,1);save();renderCart()}
  if(t.id==="geo"&&navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.querySelector('[name=map]').value=`https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}`});
  if(t.id==="payBtn")checkout()};
-$("#cartSheet").onchange=e=>{if(e.target.name==="mode"){mode=e.target.value;renderCart()}};
+$("#cartSheet").onchange=e=>{if(e.target.name==="mode"){mode=e.target.value;renderCart()}if(e.target.name==="paym"){payMethod=e.target.value;renderCart()}};
 $("#openCart").onclick=()=>{renderCart();open("#cartModal")};
 function validate(){
  const f=$("#coForm"),d=Object.fromEntries(new FormData(f));let ok=true;f.parentNode.querySelectorAll(".err[data-e]").forEach(e=>e.textContent="");
@@ -86,19 +88,23 @@ async function checkout(){
  if(busy)return;const d=validate();if(!d)return;
  const n=new Date(),p2=x=>String(x).padStart(2,"0");
  const orderNo="VB"+p2(n.getMonth()+1)+p2(n.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
- const order={uuid:uuid(),id:orderNo,mode,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:n.toISOString()};
+ const cash=payMethod==="cash";
+ if(cash&&!hasDB()){$("#payForm").innerHTML='<div class="notice">الدفع كاش غير متاح حالياً.</div>';return}
+ const order={uuid:uuid(),id:orderNo,mode,method:payMethod,customer:d,items:cart,subtotal:subtotal(),delivery:mode==="delivery"?C.deliveryFee:0,total:total(),at:n.toISOString()};
  const btn=$("#payBtn");
  if(hasDB()){
   busy=true;btn.disabled=true;btn.textContent="جاري حفظ الطلب...";
   try{await saveOrder({id:order.uuid,order_no:orderNo,customer_name:d.name.trim(),phone:d.phone.replace(/\s/g,""),type:mode,
    district:mode==="delivery"?d.district.trim():null,address:mode==="delivery"?d.address.trim():null,map_link:mode==="delivery"&&d.map?d.map.trim():null,
    branch:mode==="pickup"?d.branch:null,pickup_time:mode==="pickup"?d.time:null,
-   items:cart.map(l=>({id:l.id,name:l.name,qty:l.qty,unit:l.unit,opts:l.opts})),subtotal:order.subtotal,delivery_fee:order.delivery,total:order.total})}
-  catch(e){console.error(e);busy=false;btn.disabled=false;btn.textContent="متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
+   items:cart.map(l=>({id:l.id,name:l.name,qty:l.qty,unit:l.unit,opts:l.opts})),subtotal:order.subtotal,delivery_fee:order.delivery,total:order.total,
+   payment_method:cash?"cash":"online",payment_status:cash?"cash_pending":"pending"})}
+  catch(e){console.error(e);busy=false;btn.disabled=false;btn.textContent=cash?"تأكيد الطلب":"متابعة للدفع";$("#payForm").innerHTML='<div class="notice" id="saveErr">تعذّر حفظ الطلب، تأكد من الاتصال وحاول مرة ثانية.</div>';return}
   busy=false;
  }
  localStorage.setItem("vb_last_order",JSON.stringify(order));
  btn.style.display="none";
+ if(cash){location.href=`${C.callbackPath}?status=paid&method=cash`;return}
  if(isTest()){$("#payForm").innerHTML=`<div class="notice">وضع تجريبي: تم تجهيز الطلب ${order.id} بدون دفع فعلي.</div><a class="btn g" id="testFinish" href="${C.callbackPath}?test=1&status=paid&id=TEST">إتمام (تجريبي)</a>`;return}
  Moyasar.init({element:"#payForm",amount:Math.round(order.total*100),currency:"SAR",
   description:`Vanilla Bee order ${order.id}`,publishable_api_key:C.moyasarPublishableKey,

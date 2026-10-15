@@ -11,3 +11,5 @@ input[type=password],input[type=date]{width:100%;padding:10px;border:1px solid #
 .stbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.stbtns .btn{padding:8px 12px;font-size:.9rem}.stbtns .btn.cur{outline:3px solid var(--ink)}
 .empty{text-align:center;color:#888;padding:40px}
 [hidden]{display:none!important}
+.badge.pay-cash_pending{background:#ffe2b8}.badge.pay-cash_collected{background:var(--matcha2)}
+@media(min-width:800px){.stats{grid-template-columns:repeat(3,1fr)}}

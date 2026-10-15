@@ -11,16 +11,17 @@ const hasDB=/^https:\/\//.test(C.SUPABASE_URL||"")&&!/^PUT_/.test(C.SUPABASE_ANO
 const fail=m=>b.innerHTML=`<h2>لم تكتمل عملية الدفع</h2><p>${esc(m||"حاول مرة ثانية.")}</p><a class="btn" href="index.html">رجوع</a>`;
 if(st!=="paid"||!o)return fail(p.get("message"));
 let verified=null,warn="";
+const cash=p.get("method")==="cash"&&o.method==="cash";
 if(hasDB&&o.uuid){
- try{const r=await fetch(C.SUPABASE_URL+"/functions/v1/verify-payment",{method:"POST",headers:{"Content-Type":"application/json",apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY},body:JSON.stringify({order_id:o.uuid,payment_id:pid})});
+ try{const r=await fetch(C.SUPABASE_URL+"/functions/v1/verify-payment",{method:"POST",headers:{"Content-Type":"application/json",apikey:C.SUPABASE_ANON_KEY,Authorization:"Bearer "+C.SUPABASE_ANON_KEY},body:JSON.stringify(cash?{action:"confirm-cash",order_id:o.uuid}:{order_id:o.uuid,payment_id:pid})});
   const j=await r.json().catch(()=>({}));
   if(r.status===402||r.status===409)return fail("لم يتم تأكيد الدفع لهذا الطلب.");
-  if(r.ok&&j.ok)verified=j.order;else warn="تم استلام الدفع، لكن تعذّر تأكيد الطلب آلياً. احتفظ برقم العملية وتواصل معنا.";
+  if(r.ok&&j.ok)verified=j.order;else warn=cash?"تم حفظ طلبك. إذا ما تواصلنا معك خلال دقائق، تواصل معنا.":"تم استلام الدفع، لكن تعذّر تأكيد الطلب آلياً. احتفظ برقم العملية وتواصل معنا.";
  }catch(e){warn="تعذّر الاتصال للتأكيد. احتفظ برقم العملية وتواصل معنا."}
 }
 localStorage.removeItem("vb_cart");
 b.innerHTML=`<h2 id="okTitle">تم استلام طلبك 💗🍵</h2>${p.get("test")?'<div class="notice">طلب تجريبي (بدون دفع فعلي)</div>':''}${warn?`<div class="notice" id="warn">${esc(warn)}</div>`:""}
-<p>رقم الطلب: <b>${esc(o.id)}</b><br>رقم العملية: ${esc(pid)}${verified?' <span style="color:#7fa36b">✓ مؤكد</span>':''}</p>
+<p>رقم الطلب: <b>${esc(o.id)}</b>${verified?' <span style="color:#7fa36b">✓ مؤكد</span>':''}<br>${cash?`💵 الدفع: كاش عند ${o.mode==="delivery"?"التوصيل":"الاستلام"} (${esc(o.total)} ر.س)`:"رقم العملية: "+esc(pid)}</p>
 <p>${o.mode==="delivery"?"🚗 توصيل إلى: "+esc(o.customer.district+" - "+o.customer.address):"🏪 استلام من: "+esc(o.customer.branch+" ("+o.customer.time+")")}</p>
 ${o.items.map(l=>`<div class="ci"><b style="direction:ltr">${esc(l.name)}</b> × ${l.qty}<small>${l.opts.map(esc).join(" · ")}</small></div>`).join("")}
 <p><b>الإجمالي: ${esc(o.total)} ر.س</b></p><a class="btn" href="index.html">رجوع للمتجر</a>`;

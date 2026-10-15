@@ -18,13 +18,15 @@
  <div class="stats">
   <div class="stat"><span>طلبات اليوم المدفوعة</span><b id="sCount">0</b></div>
   <div class="stat"><span>إجمالي المبيعات</span><b id="sTotal">0</b></div>
+  <div class="stat"><span>💳 إلكتروني</span><b id="sOnline">0</b></div>
+  <div class="stat"><span>💵 كاش</span><b id="sCash">0</b></div>
   <div class="stat"><span>توصيل / استلام</span><b id="sSplit">0 / 0</b></div>
   <div class="stat"><span>قيد التنفيذ</span><b id="sOpen">0</b></div>
  </div>
  <div class="filters">
   <label>التاريخ<input type="date" id="fDate"></label>
   <label>الحالة<select id="fStatus"><option value="">الكل</option></select></label>
-  <label>الدفع<select id="fPay"><option value="done">مدفوع فقط</option><option value="">الكل (مع غير المدفوع)</option></select></label>
+  <label>الدفع<select id="fPay"><option value="done">المؤكدة (مدفوع + كاش)</option><option value="">الكل (مع غير المدفوع)</option></select></label>
   <span id="live" class="live">● مباشر</span>
   <button class="btn ghost" id="enableAlerts" type="button">🔔 تفعيل التنبيهات</button>
  </div>

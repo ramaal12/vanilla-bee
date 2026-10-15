@@ -2,13 +2,14 @@
 const C=window.VB_CONFIG,$=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const STATUS={new:"جديد",preparing:"قيد التحضير",ready:"جاهز",out_for_delivery:"خرج للتوصيل",done:"مكتمل",cancelled:"ملغي"};
-const PAY={pending:"بانتظار الدفع",paid:"مدفوع",test:"تجريبي",failed:"فشل الدفع"};
+const PAY={pending:"بانتظار الدفع",paid:"مدفوع",test:"تجريبي",failed:"فشل الدفع",cash_pending:"كاش - لم يُحصّل",cash_collected:"كاش - تم التحصيل"};
 const OPEN=["new","preparing","ready","out_for_delivery"];
 const sar=n=>Number(n||0).toFixed(2)+" ر.س";
 const tz="Asia/Riyadh";
 const fmtTime=d=>new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory",{timeZone:tz,hour:"2-digit",minute:"2-digit"}).format(new Date(d));
 const riyadhDay=d=>new Intl.DateTimeFormat("en-CA",{timeZone:tz}).format(d?new Date(d):new Date()); // YYYY-MM-DD
-const isDone=o=>o.payment_status==="paid"||o.payment_status==="test";
+const isDone=o=>["paid","test","cash_pending","cash_collected"].includes(o.payment_status);
+const isCash=o=>o.payment_method==="cash";
 if(!/^https:\/\//.test(C.SUPABASE_URL||"")||/^PUT_/.test(C.SUPABASE_ANON_KEY||"")){$("#cfgNotice").hidden=false;$("#loginForm").hidden=true;return}
 const sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);
 window.__vbAdmin={sb};
@@ -59,15 +60,18 @@ window.__vbOnChange=onChange;
 function render(flashId){
  const all=[...orders.values()].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));const st=$("#fStatus").value,pay=$("#fPay").value;
  const paid=all.filter(o=>isDone(o)&&o.status!=="cancelled");
+ const sum=a=>a.reduce((x,o)=>x+Number(o.total),0),online=paid.filter(o=>!isCash(o)),cashL=paid.filter(isCash);
  $("#sCount").textContent=paid.length;
- $("#sTotal").textContent=sar(paid.reduce((a,o)=>a+Number(o.total),0));
+ $("#sTotal").textContent=sar(sum(paid));
+ $("#sOnline").textContent=sar(sum(online));
+ $("#sCash").textContent=sar(sum(cashL))+(cashL.some(o=>o.payment_status==="cash_pending")?` (لم يُحصّل ${sar(sum(cashL.filter(o=>o.payment_status==="cash_pending")))})`:"");
  $("#sSplit").textContent=paid.filter(o=>o.type==="delivery").length+" / "+paid.filter(o=>o.type==="pickup").length;
  $("#sOpen").textContent=paid.filter(o=>OPEN.includes(o.status)).length;
  const list=all.filter(o=>(!st||o.status===st)&&(!pay||isDone(o)));
  $("#list").innerHTML=list.length?list.map(o=>`<div class="ord s-${o.status}${o.id===flashId?" flash":""}" data-id="${o.id}">
   <div class="row"><b>${esc(o.order_no)}</b><span>${fmtTime(o.created_at)}</span></div>
   <div class="row"><span>${esc(o.customer_name)} · ${o.type==="delivery"?"🚗 توصيل":"🏪 استلام"}</span><b>${sar(o.total)}</b></div>
-  <div><span class="badge">${STATUS[o.status]}</span><span class="badge pay-${o.payment_status}">${PAY[o.payment_status]}</span>
+  <div><span class="badge">${STATUS[o.status]}</span><span class="badge pay-${o.payment_status}">${isCash(o)?"💵 ":""}${PAY[o.payment_status]}</span>
   <small style="color:#777"> ${o.items.map(l=>esc(l.name)+" ×"+l.qty).join("، ")}</small></div></div>`).join(""):`<div class="empty">لا توجد طلبات</div>`;
  const open=$("#detail").dataset.id;if(open&&$("#detail").classList.contains("open"))showDetail(open);
 }
@@ -81,6 +85,8 @@ function showDetail(id){
  ${o.items.map(l=>`<div class="ci"><div class="row"><b dir="ltr">${esc(l.name)} × ${l.qty}</b><span>${sar(l.unit*l.qty)}</span></div><small>${(l.opts||[]).map(esc).join(" · ")}</small></div>`).join("")}
  <div class="row"><span>المجموع</span><span>${sar(o.subtotal)}</span></div>${Number(o.delivery_fee)?`<div class="row"><span>التوصيل</span><span>${sar(o.delivery_fee)}</span></div>`:""}
  <div class="row"><b>الإجمالي</b><b>${sar(o.total)}</b></div>
+ ${isCash(o)?`<div class="notice">💵 كاش: ${o.payment_status==="cash_collected"?"تم التحصيل ✓":`المطلوب تحصيله ${sar(o.total)}`}</div>
+  <button class="btn ${o.payment_status==="cash_pending"?"g":"ghost"}" id="cashToggle" data-to="${o.payment_status==="cash_pending"?"cash_collected":"cash_pending"}">${o.payment_status==="cash_pending"?"💵 تم استلام الكاش":"↩︎ إلغاء التحصيل"}</button>`:""}
  ${o.moyasar_payment_id?`<small dir="ltr">Payment: ${esc(o.moyasar_payment_id)}</small>`:""}
  <label>ملاحظات داخلية<textarea id="notes" rows="2" maxlength="500">${esc(o.notes||"")}</textarea></label><button class="btn ghost" id="saveNotes">حفظ الملاحظة</button>
  <div class="stbtns">${Object.entries(STATUS).filter(([k])=>o.type==="delivery"||k!=="out_for_delivery").map(([k,v])=>`<button class="btn ${k==="cancelled"?"":"g"} ${o.status===k?"cur":""}" data-st="${k}">${v}</button>`).join("")}</div>
@@ -96,6 +102,7 @@ $("#list").onclick=e=>{const c=e.target.closest(".ord");if(c)showDetail(c.datase
 $("#detailSheet").onclick=e=>{const t=e.target;
  if(t.hasAttribute("data-close"))$("#detail").classList.remove("open");
  if(t.dataset.st){if(t.dataset.st==="cancelled"&&!confirm("إلغاء الطلب؟"))return;update($("#detail").dataset.id,{status:t.dataset.st})}
+ if(t.id==="cashToggle")update($("#detail").dataset.id,{payment_status:t.dataset.to});
  if(t.id==="saveNotes")update($("#detail").dataset.id,{notes:$("#notes").value.trim()||null})};
 $("#detail").onclick=e=>{if(e.target.id==="detail")e.target.classList.remove("open")};
 $("#fDate").onchange=load;$("#fStatus").onchange=()=>render();$("#fPay").onchange=()=>render();
@@ -110,7 +117,7 @@ function alertNew(o){
  beep();window.__vbAlerts=(window.__vbAlerts||0)+1;
  document.title="🔔 طلب جديد | Vanilla Bee";setTimeout(()=>document.title="لوحة الطلبات | Vanilla Bee",8000);
  if("Notification" in window&&Notification.permission==="granted"){
-  try{const n=new Notification("طلب جديد "+o.order_no,{body:`${o.customer_name} · ${o.type==="delivery"?"توصيل":"استلام"} · ${sar(o.total)}`,tag:o.id});n.onclick=()=>{window.focus();showDetail(o.id)}}catch(e){}
+  try{const n=new Notification("طلب جديد "+o.order_no,{body:`${o.customer_name} · ${o.type==="delivery"?"توصيل":"استلام"} · ${sar(o.total)}${isCash(o)?" · كاش":""}`,tag:o.id});n.onclick=()=>{window.focus();showDetail(o.id)}}catch(e){}
  }
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});

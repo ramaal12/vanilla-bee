@@ -35,6 +35,7 @@ export function telegramText(o: any): string {
     : `🏪 ${escHtml(o.branch)} — ${escHtml(o.pickup_time)}`;
   return [
     `🐝 <b>طلب جديد ${escHtml(o.order_no)}</b>${o.payment_status === "test" ? " (تجريبي)" : ""}`,
+    o.payment_method === "cash" ? "💵 <b>الدفع: كاش عند الاستلام</b>" : (o.payment_status === "paid" ? "💳 مدفوع إلكترونياً" : null),
     `👤 ${escHtml(o.customer_name)}`,
     `📞 ${escHtml(o.phone)}`,
     `${TYPE[o.type] ?? o.type}`,
@@ -59,10 +60,17 @@ async function sendTelegram(o: any) {
   return r.ok;
 }
 
+async function markNotified(id: string) {
+  // يرجع الصف فقط إذا لم يُرسل إشعار من قبل (يمنع التكرار)
+  const r = await db(`orders?id=eq.${id}&notified_at=is.null`, {
+    method: "PATCH", body: JSON.stringify({ notified_at: new Date().toISOString() }) });
+  return (await r.json())?.[0] ?? null;
+}
+
 const publicView = (o: any) => ({
   order_no: o.order_no, type: o.type, district: o.district, address: o.address, branch: o.branch,
   pickup_time: o.pickup_time, items: o.items, subtotal: o.subtotal, delivery_fee: o.delivery_fee,
-  total: o.total, payment_status: o.payment_status,
+  total: o.total, payment_status: o.payment_status, payment_method: o.payment_method,
 });
 
 export async function handler(req: Request): Promise<Response> {
@@ -71,12 +79,25 @@ export async function handler(req: Request): Promise<Response> {
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400); }
   const orderId = String(body.order_id ?? ""), paymentId = String(body.payment_id ?? "");
+  if (body.action === "confirm-cash") {
+    if (!/^[0-9a-f-]{36}$/i.test(orderId)) return json({ error: "bad input" }, 400);
+    const cr = await db(`orders?id=eq.${orderId}&select=*`);
+    const o = (await cr.json())?.[0];
+    if (!o) return json({ error: "order not found" }, 404);
+    if (o.payment_method !== "cash" || o.payment_status !== "cash_pending") return json({ error: "not a cash order" }, 409);
+    if (o.notified_at) return json({ ok: true, telegram: "already", order: publicView(o) });
+    if (Date.now() - new Date(o.created_at).getTime() > 15 * 60 * 1000) return json({ error: "expired" }, 410);
+    const claimed = await markNotified(o.id);
+    const tgOk = claimed ? await sendTelegram(claimed) : "already";
+    return json({ ok: true, telegram: tgOk, order: publicView(o) });
+  }
   if (!/^[0-9a-f-]{36}$/i.test(orderId) || !/^[A-Za-z0-9_-]{2,64}$/.test(paymentId))
     return json({ error: "bad input" }, 400);
 
   const r = await db(`orders?id=eq.${orderId}&select=*`);
   const order = (await r.json())?.[0];
   if (!order) return json({ error: "order not found" }, 404);
+  if (order.payment_method === "cash") return json({ error: "cash order" }, 409);
   if (order.payment_status === "paid" || order.payment_status === "test")
     return json({ ok: true, order: publicView(order) });               // تم التحقق مسبقاً
 
@@ -106,7 +127,7 @@ export async function handler(req: Request): Promise<Response> {
     }),
   });
   const updated = (await u.json())?.[0];
-  if (updated && newStatus !== "failed") await sendTelegram(updated);
+  if (updated && newStatus !== "failed") { const c = await markNotified(updated.id); if (c) await sendTelegram(c); }
   const final = updated ?? order;
   return json({ ok: newStatus !== "failed", order: publicView({ ...final, payment_status: final.payment_status }) },
     newStatus === "failed" ? 402 : 200);
