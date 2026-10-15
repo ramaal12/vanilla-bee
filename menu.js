@@ -14,9 +14,7 @@ window.VB_MENU = {
   items: [
     { id:"ivml", img:"assets/m-ivml.jpg?v=202610152248", cat:"matcha", type:"drink", name:"ICE VANILLA MATCHA LATTE", price:27, emoji:"🍵",
       desc:"آيس فانيلا ماتشا لاتيه بحليب الفانيلا وسيروب الفانيلا وفوم الفانيلا، واختر الحليب اللي تحبه" },
-    { id:"veloura", img:"assets/m-veloura.jpg", cat:"matcha", type:"drink", name:"VELOURA MATCHA", price:28, emoji:"🥭",
-      desc:"أجواء صيفية: ماتشا مانجو مثلجة بحليب المانجو وفوم المانجو وسيروب الفانيلا" },
-    { id:"coconut", img:"assets/m-coconut.jpg", cat:"matcha", type:"drink", name:"COCONUT MATCHA", price:23, emoji:"🥥",
+    { id:"coconut", img:"assets/m-coconut.jpg?v=202610152250c", cat:"matcha", type:"drink", name:"COCONUT MATCHA", price:23, emoji:"🥥",
       desc:"حليب جوز الهند مع الماتشا وسيروب منكّه، ممزوجة في لاتيه ناعم ومنعش" },
     { id:"classic", img:"assets/m-classic.jpg?v=202610152248", cat:"matcha", type:"drink", name:"CLASSIC MATCHA", price:24, emoji:"🍃",
       desc:"مزيج كلاسيكي من الماتشا والحليب بطعم ناعم وغني" },

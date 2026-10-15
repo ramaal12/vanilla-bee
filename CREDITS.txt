@@ -1,7 +1,5 @@
 Hero: user-supplied photo.
 Product/gallery photos from Wikimedia Commons (licenses CC0 / Public domain / CC BY / CC BY-SA):
-m-coconut: Matcha_latte_in_tall_glass.jpg (CC BY-SA 4.0)
-m-veloura: Fresh-mango-smoothie_01.jpg (CC BY-SA 4.0)
 m-icev60: Ice_coffee_image.jpg (CC BY-SA 3.0)
 m-hotv60: Manual_drip_(pour-over)_coffee.jpg (CC0)
 m-brownie: Brownie-dessert-cake-sweet-45202.jpg (CC0)
